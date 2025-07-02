@@ -6,7 +6,7 @@ The API should be considered *beta* stability. It might still change in future i
 ### Quickstart
 
 ```js
-require('./vendor/mage2tv/magento-cache-clean/export/watcher');
+require('./vendor/mage-os/magento-cache-clean/export/watcher');
 
 const mageBaseDir = './';
 const logLevel = 2; // Log Levels: {debug: 3, info: 2, notice: 1, error: 0}
@@ -22,7 +22,7 @@ First, the file with the exported functions needs to be included.
 Assuming the package is installed as a Magento development composer dependency, and the current working directory is that Magento base dir, the functions can be imported into the global namespace via:
 
 ```js
-require('./vendor/mage2tv/magento-cache-clean/export/watcher');
+require('./vendor/mage-os/magento-cache-clean/export/watcher');
 ```
 
 Since the watcher is not a native node application, the exports are global functions on the `cache.watcher` pseudo "namespace".

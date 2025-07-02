@@ -7,14 +7,14 @@ In many situations the cache watcher "just works" when run inside the container.
 For example, if you are using [Warden](https://warden.dev), you can run the utility
 after running `warden shell`:
 ```
-$ composer global require mage2tv/magento-cache-clean
+$ composer global require mage-os/magento-cache-clean
 $ ~/.composer/vendor/bin/cache-clean.js -w
 ```
 
 Or, if you want to execute the commands from the host machine:
 
 ```
-$ warden env exec php-fpm composer global require mage2tv/magento-cache-clean
+$ warden env exec php-fpm composer global require mage-os/magento-cache-clean
 $ warden env exec php-fpm /home/www-data/.composer/vendor/bin/cache-clean.js -w
 ```
 
@@ -24,7 +24,7 @@ be done once for all projects.
 Simon Sprankel provided [a screenshot of the PHPStorm settings](https://github.com/davidalger/warden/issues/258#issuecomment-723576699) on how the command can be run automatically.
 
 However, there are a couple of common issues that can arrise when working
-with a virtualized environment in regards to the `cache-clean.js` watcher.
+with a virtualized environment in regard to the `cache-clean.js` watcher.
 
 For example, when the node based watcher is run in a different container than
 PHP based Magento, the file system path to the Magento directory might be
@@ -85,9 +85,9 @@ The script assumes it is run in a Magento base directory, or the Magento
 directory can be passed as an argument:
 
 ```bash
-$ php vendor/mage2tv/magento-cache-clean/bin/generate-cache-clean-config.php
+$ php vendor/mage-os/magento-cache-clean/bin/generate-cache-clean-config.php
 # or
-$ php vendor/mage2tv/magento-cache-clean/bin/generate-cache-clean-config.php path/to/magento
+$ php vendor/mage-os/magento-cache-clean/bin/generate-cache-clean-config.php path/to/magento
 ```
 
 The configuration dump is written to the file `var/cache-clean-config.json`.

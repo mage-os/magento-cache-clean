@@ -125,7 +125,7 @@
          (file-cache-backend? config)
          (fpc-dir-bug-present? base-dir))
     (log/notice :without-time (str "NOTICE: Workaround for FPC cache dir bug enabled!\n"
-                                   "Please read https://github.com/mage2tv/magento-cache-clean/blob/master/doc/fpc-dir-bug.md"))
+                                   "Please read https://github.com/mage-os/magento-cache-clean/blob/master/doc/fpc-dir-bug.md"))
     true))
 
 (defn missing-cache-dir? [base-dir config cache-type]

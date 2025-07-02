@@ -4,14 +4,12 @@
 
 A faster drop in replacement for `bin/magento cache:clean` with a file watcher.
 
-The file watcher automatically cleans affected cache types in the Magento 2
-cache during development.
+The file watcher automatically cleans affected cache types in the Magento 2 cache during development.
 For example, if you make a change to a template, it only cleans the
 `block_html` and `full_page` caches, not the `config` or `layout` caches.
 
 The project is only tested on MacOS and Linux.
-Please report bugs by opening an issue on the [GitHub issue tracker](https://github.com/mage2tv/magento-cache-clean/issues).
-
+Please report bugs by opening an issue on the [GitHub issue tracker](https://github.com/mage-os/magento-cache-clean/issues).
 
 ## Features
 
@@ -26,13 +24,13 @@ Please report bugs by opening an issue on the [GitHub issue tracker](https://git
 Installation:
 
 ``` shell
-composer require --dev mage2tv/magento-cache-clean
+composer require --dev mage-os/magento-cache-clean
 ```
 
 Update:
 
 ``` shell
-composer update --dev mage2tv/magento-cache-clean
+composer update --dev mage-os/magento-cache-clean
 ```
 
 The tool is commonly installed globally using `composer global require ...`.
@@ -50,13 +48,12 @@ For example:
 ``` shell
 vendor/bin/cache-clean.js config full_page
 ```
-(It's quicker because the start up time of `bin/magento` is so slow.)
+(It's quicker because the start-up time of `bin/magento` is so slow.)
 
 There are several options to customize the behavior:
 
 ```
 vendor/bin/cache-clean.js --help
-Sponsored by https://www.mage2.tv
 
 Usage: cache-clean.js [options and flags] [cache-types...]
 Clean the given cache types. If none are given, clean all cache types.
@@ -73,9 +70,8 @@ Clean the given cache types. If none are given, clean all cache types.
 --help|-h               This help message
 ```
 
-Usually I run the command once with the `--watch` switch when I start
-development, and when I make a change that isn't automatically detected (yet),
-I run `vendor/bin/cache-clean.js` with the given cache types as a drop in
+Usually I run the command once with the `--watch` switch (or `-w`) when I start development, and when I make a change
+that isn't automatically detected (yet), I run `vendor/bin/cache-clean.js` with the given cache types as a drop in
 replacement for `bin/magento cache:clean`.
 
 ### Hotkeys
@@ -104,9 +100,8 @@ Use the `--keep-generated` switch if you want files in `generated/code` to remai
 
 ### Prerequisites:
 
-* `node.js` (built on 10, but should work with older 8.x versions, too).
-* It probably is a good idea to turn on all Magento caches
-  `bin/magento cache:enable` to get the full benefit.
+* `node.js` (built on 18, but should work with older 10.x versions, too).
+* It's a good idea to turn on all Magento caches `bin/magento cache:enable` to get the full benefit.
 
 
 ## Known issues
@@ -114,7 +109,7 @@ Use the `--keep-generated` switch if you want files in `generated/code` to remai
 * Currently, the watcher has to be restarted after a new theme is added, so it
   is added to the watchlist.
 
-* Changes to files on NFS mounts (e.g. in vagrant) do not trigger the watches.
+* Changes to files on NFS mounts (e.g. in vagrant) do **not** trigger the watches.
   Depending on a given setup, it might be possible to run the watcher on the
   host system instead.
 
@@ -141,31 +136,29 @@ echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo s
 
 ## More information
 
-* Some words on using the watcher with [Docker & VMs](https://github.com/mage2tv/magento-cache-clean/blob/master/doc/docker-and-vm.md).
+* Some words on using the watcher with [Docker & VMs](https://github.com/mage-os/magento-cache-clean/blob/main/doc/docker-and-vm.md).
 
-* [Running the watcher from code](https://github.com/mage2tv/magento-cache-clean/blob/master/doc/using-via-code.md).
+* [Running the watcher from code](https://github.com/mage-os/magento-cache-clean/blob/main/doc/using-via-code.md).
 
-* The [rationale](https://github.com/mage2tv/magento-cache-clean/blob/master/doc/rationale.md) explains the reasons I wrote the utility.
+* The [rationale](https://github.com/mage-os/magento-cache-clean/blob/main/doc/rationale.md) explains the reasons I wrote the utility.
 
-* How to [build](https://github.com/mage2tv/magento-cache-clean/blob/master/doc/building.md) the tool from source.
+* How to [build](https://github.com/mage-os/magento-cache-clean/blob/main/doc/building.md) the tool from source.
 
-* Integrating the watcher with PHPStorm:
-  * [Mage2 TV] [How to set up the watcher as a PHPStorm startup task](https://www.mage2.tv/content/fundamentals/magento-cli-tool/configuring-the-magento-cache-clean.js-utility-phpstorm-startup-task/).
-  * [Mage2 TV] [How to enable the hotkeys in PHPStorm](https://www.mage2.tv/content/fundamentals/magento-cli-tool/enabling-the-hotkeys-for-the-cache-clean.js-utility-in-phpstorm/).
+* This package used to be called `mage2tv/magento-cache-clean`, but now it is part of Mage-OS, and thus the package name 
+  is `mage-os/magento-cache-clean`. The original package still works as it now is an empty wrapper that requires this 
+  package. Existing installations should continue to work.
 
 ## Thanks
 
 This script was inspired by [Timon de Groot](https://twitter.com/TimonGreat)'s
-[blog post](https://blog.timpack.org/speed-up-magento-development) where he
-describes the idea to use a file watcher in PHPStorm to call `redis-cli` to
-clear the complete cache whenever a XML file is modified.
-The only downside of that solution is that it always flushes the full cache and
-only works with redis.
+[blog post](https://blog.timpack.org/speed-up-magento-development) where he describes the idea to use a file watcher in
+PHPStorm to call `redis-cli` to clear the complete cache whenever a XML file is modified.
+The only downside of that solution is that it always flushes the full cache and only works with redis.
 
-Thank you also to everybody who gave feedback, shared ideas and helped test new
-features! This tool would be impossible without you!
+Thank you also to everybody who gave feedback, shared ideas and helped test new features! This tool would be impossible
+without you!
 
 ## Copyright & License
 
 Copyright 2019 - present by Vinai Kopp, distributed under the BSD-3-Clause license (see
-the [LICENSE](https://github.com/mage2tv/magento-cache-clean/blob/master/LICENSE) file).
+the [LICENSE](https://github.com/mage-os/magento-cache-clean/blob/main/LICENSE) file).
