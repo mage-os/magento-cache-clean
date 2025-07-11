@@ -17,7 +17,8 @@
           "full_page"                       "FPC"
           "config_integration_consolidated" "INTEGRATION_CONSOLIDATED"
           "config_integration_api"          "INTEGRATION_API_CONFIG"
-          "config_integration"              "INTEGRATION"} type)
+          "config_integration"              "INTEGRATION"
+          "hyva_svg"                        "HYVA_ICONS"} type)
     (string/upper-case type)))
 
 (defn- magefile->filetype [file]
