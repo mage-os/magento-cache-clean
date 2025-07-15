@@ -3,7 +3,6 @@
 /target
 /.nrepl-port
 /.rebel_readline_history
-/package.json
 /package-lock.json
 /.clj-kondo
 /.lsp
