@@ -5,9 +5,17 @@
             [clojure.string :as string]))
 
 (defonce child-process (js/require "child_process"))
+(defonce path (js/require "path"))
 
 (defn- integration-test-base-dir? [dir]
   (string/includes? dir "dev/tests/integration/tmp/sandbox-"))
+
+(defn- app-bootstrap-php-file [base-dir]
+  (let [dir (fs/add-trailing-slash base-dir)
+        file-path (if (integration-test-base-dir? dir)
+                    (.join path dir ".." ".." ".." ".." ".." "app" "bootstrap.php")
+                    (.join path dir "app" "bootstrap.php"))]
+    (string/replace file-path "\\" "/")))
 
 (defn- etc-env-php-file [base-dir]
   (let [dir (fs/add-trailing-slash base-dir)]
@@ -16,11 +24,15 @@
       (str dir "app/etc/env.php"))))
 
 (defn- env-config-cmd [magento-basedir]
-  (let [etc-env-php-file (etc-env-php-file magento-basedir)]
+  (let [etc-env-php-file (etc-env-php-file magento-basedir)
+        app-bootstrap-php-file (app-bootstrap-php-file magento-basedir)]
     (when-not (fs/exists? etc-env-php-file)
       (throw (ex-info (str "File env.php not found: " etc-env-php-file) {})))
+    (when-not (fs/exists? app-bootstrap-php-file)
+      (throw (ex-info (str "File bootstrap.php not found: " app-bootstrap-php-file) {})))
     (str "php -r "
-         "\"echo json_encode("
+         "\"require '" app-bootstrap-php-file "'; "
+         "echo json_encode("
          "(require '" etc-env-php-file "') ?? []"
          ");\"")))
 
