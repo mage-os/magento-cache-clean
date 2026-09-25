@@ -3,7 +3,7 @@
             [log.log :as log]))
 
 
-(defrecord RemoteSynchronized [local remote]
+(defrecord RemoteSynchronized [local remote id-prefix]
   storage/CacheStorage
 
   (clean-tag [this tag]
@@ -13,6 +13,9 @@
     (storage/clean-tag local tag))
   (clean-id [this id]
     (log/debug "Delegating cleaning of id" id "to remote backend")
+    ;; Like RemoteSynchronizedCache::remove(), also drop the remote version hash,
+    ;; otherwise Magento keeps serving local copies on other nodes.
+    (storage/clean-id remote (str id ":hash"))
     (storage/clean-id remote id)
     (log/debug "Delegating cleaning of id" id "to local backend")
     (storage/clean-id local id))
@@ -29,8 +32,10 @@
 
 
 (defn create [local remote]
+  ;; cache.cache prefixes tags and ids with (:id-prefix cache), so the wrapper needs it too.
   (map->RemoteSynchronized {:local local
-                            :remote remote}))
+                            :remote remote
+                            :id-prefix (:id-prefix remote)}))
 
 (defn extract-local-config [synchronized-config]
   {:backend (-> synchronized-config :backend_options :local_backend)
