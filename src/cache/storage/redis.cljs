@@ -1,5 +1,6 @@
 (ns cache.storage.redis
   (:require [cache.storage :as storage]
+            [clojure.string :as string]
             [log.log :as log]
             [cljs.core.async :refer [go-loop timeout <!]]))
 
@@ -14,6 +15,10 @@
 (def set-tags "zc:tags")
 (def prefix-key "zc:k:")
 (def prefix-tag-id "zc:ti:")
+
+;; Key layout of the Symfony RedisTagAdapter used by Mage-OS 4 for the 'redis' backend
+(def symfony-prefix-tag-id "cache:tags:")
+(def symfony-prefix-id-tags "cache:id_tags:")
 
 (defn- localhost? [host]
   (#{"localhost" "127.0.0.1"} host))
@@ -46,12 +51,15 @@
       password (assoc :auth_pass password)
       database (assoc :db database))))
 
-(defn- tag->ids [^js/RedisClient client tag callback]
-  (.smembers client (str prefix-tag-id tag)
+(defn- set-members
+  "Call callback with the members of the set at key.
+  The callback is always called, with nil if the lookup fails,
+  so callers can rely on it to track pending tasks."
+  [^js/RedisClient client key callback]
+  (.smembers client key
              (fn [err ids]
-               (if err
-                 (log/error err)
-                 (callback (js->clj ids))))))
+               (when err (log/error err))
+               (callback (when-not err (js->clj ids))))))
 
 (defn- prefix-keys [ids]
   (doall (map #(str prefix-key %) ids)))
@@ -69,18 +77,60 @@
   (.del client (str prefix-tag-id tag))
   (.srem client set-tags tag))
 
+(defn- symfony-keys
+  "Data and reverse index keys of ids without the id prefix.
+  Symfony separates the namespace (the id prefix) from the id with a colon."
+  [id-prefix ids]
+  (doall (mapcat (fn [id] [(str id-prefix ":" id)
+                           (str symfony-prefix-id-tags id-prefix id)])
+                 ids)))
+
+(defn- symfony-delete-cache-ids [^js/RedisClient client id-prefix ids]
+  (apply log/debug "Cleaning id(s):" ids)
+  (apply js-invoke client "del" (symfony-keys id-prefix ids)))
+
+(defn- symfony-delete-tag-and-ids [^js/RedisClient client id-prefix tag ids]
+  (when (seq ids)
+    (log/debug "About to clean" (count ids) "id(s)")
+    (run! #(symfony-delete-cache-ids client id-prefix %) (partition-all 500 ids)))
+  (.del client (str symfony-prefix-tag-id tag)))
+
+(defn- strip-id-prefix [id-prefix id]
+  (if (string/starts-with? id (str id-prefix))
+    (subs id (count id-prefix))
+    id))
+
+(defn- pending-task
+  "Callback for set-members that passes the ids to delete-fn, unless the
+  lookup failed. The pending task is always marked as done, also when
+  delete-fn throws, otherwise close would wait forever."
+  [n-pending delete-fn]
+  (fn [ids]
+    (try
+      (when ids (delete-fn ids))
+      (catch :default e (log/error e))
+      (finally (swap! n-pending dec)))))
+
 (defrecord Redis [^js/RedisClient client database id-prefix n-pending]
   storage/CacheStorage
 
   (clean-tag [this tag]
-    (swap! n-pending inc)
-    (let [callback (fn [ids]
-                     (delete-tag-and-ids client tag ids)
-                     (swap! n-pending dec))]
-      (tag->ids client tag callback)))
+    (swap! n-pending + 2)
+    (set-members client (str prefix-tag-id tag)
+                 (pending-task n-pending #(delete-tag-and-ids client tag %)))
+    (set-members client (str symfony-prefix-tag-id tag)
+                 (pending-task n-pending #(symfony-delete-tag-and-ids client id-prefix tag %))))
 
   (clean-id [this id]
-    (delete-cache-ids client [id]))
+    (log/debug "Cleaning id:" id)
+    ;; One round trip for the keys of both the legacy and the Symfony layout
+    (let [del (concat ["del"]
+                      (prefix-keys [id])
+                      (symfony-keys id-prefix [(strip-id-prefix id-prefix id)]))
+          srem ["srem" set-ids id]]
+      ;; js-invoke keeps the method names intact in advanced builds
+      (-> (js-invoke client "batch" (clj->js [del srem]))
+          (js-invoke "exec" (fn [err _] (when err (log/error err)))))))
 
   (clean-all [this]
     (log/debug "Flushing redis db" database)
