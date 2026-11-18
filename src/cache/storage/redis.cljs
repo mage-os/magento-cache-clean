@@ -122,8 +122,15 @@
                  (pending-task n-pending #(symfony-delete-tag-and-ids client id-prefix tag %))))
 
   (clean-id [this id]
-    (delete-cache-ids client [id])
-    (symfony-delete-cache-ids client id-prefix [(strip-id-prefix id-prefix id)]))
+    (log/debug "Cleaning id:" id)
+    ;; One round trip for the keys of both the legacy and the Symfony layout
+    (let [del (concat ["del"]
+                      (prefix-keys [id])
+                      (symfony-keys id-prefix [(strip-id-prefix id-prefix id)]))
+          srem ["srem" set-ids id]]
+      ;; js-invoke keeps the method names intact in advanced builds
+      (-> (js-invoke client "batch" (clj->js [del srem]))
+          (js-invoke "exec" (fn [err _] (when err (log/error err)))))))
 
   (clean-all [this]
     (log/debug "Flushing redis db" database)
