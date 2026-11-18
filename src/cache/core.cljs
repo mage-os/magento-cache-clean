@@ -7,7 +7,7 @@
 
 (set! *warn-on-infer* true)
 
-(defonce version "1.1.4")
+(defonce version "1.1.6")
 
 (defn node-version-str []
   (let [proc ^js/process (js/require "process")]
@@ -180,7 +180,7 @@ Clean the given cache types. If none are given, clean all cache types.
   ;; personally affected.
   ;; So if you disagree, just deal with it, or stop using this tool.
   (log/always :without-time "Release" version
-              " \033[43m\033[34m #StandWith\033[44m\033[33mUkraine \033[0m "
+              " \033[48;2;255;215;0m\033[38;2;0;87;183m\033[1m #StandWith\033[48;2;0;87;183m\033[38;2;255;215;0mUkraine \033[0m "
               #_"\033[40m \033[97m#BlackLivesMatter ✊🏾 \033[0m")
   (try
     (check-node-compatibility!)
