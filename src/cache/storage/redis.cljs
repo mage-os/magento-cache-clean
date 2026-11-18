@@ -1,5 +1,6 @@
 (ns cache.storage.redis
   (:require [cache.storage :as storage]
+            [clojure.string :as string]
             [log.log :as log]
             [cljs.core.async :refer [go-loop timeout <!]]))
 
@@ -14,6 +15,10 @@
 (def set-tags "zc:tags")
 (def prefix-key "zc:k:")
 (def prefix-tag-id "zc:ti:")
+
+;; Key layout of the Symfony RedisTagAdapter used by Mage-OS 4 for the 'redis' backend
+(def symfony-prefix-tag-id "cache:tags:")
+(def symfony-prefix-id-tags "cache:id_tags:")
 
 (defn- localhost? [host]
   (#{"localhost" "127.0.0.1"} host))
@@ -46,8 +51,8 @@
       password (assoc :auth_pass password)
       database (assoc :db database))))
 
-(defn- tag->ids [^js/RedisClient client tag callback]
-  (.smembers client (str prefix-tag-id tag)
+(defn- set-members [^js/RedisClient client key callback]
+  (.smembers client key
              (fn [err ids]
                (if err
                  (log/error err)
@@ -69,18 +74,46 @@
   (.del client (str prefix-tag-id tag))
   (.srem client set-tags tag))
 
+(defn- symfony-keys
+  "Data and reverse index keys of ids without the id prefix.
+  Symfony separates the namespace (the id prefix) from the id with a colon."
+  [id-prefix ids]
+  (doall (mapcat (fn [id] [(str id-prefix ":" id)
+                           (str symfony-prefix-id-tags id-prefix id)])
+                 ids)))
+
+(defn- symfony-delete-cache-ids [^js/RedisClient client id-prefix ids]
+  (apply log/debug "Cleaning id(s):" ids)
+  (apply js-invoke client "del" (symfony-keys id-prefix ids)))
+
+(defn- symfony-delete-tag-and-ids [^js/RedisClient client id-prefix tag ids]
+  (when (seq ids)
+    (log/debug "About to clean" (count ids) "id(s)")
+    (run! #(symfony-delete-cache-ids client id-prefix %) (partition-all 500 ids)))
+  (.del client (str symfony-prefix-tag-id tag)))
+
+(defn- strip-id-prefix [id-prefix id]
+  (if (string/starts-with? id (str id-prefix))
+    (subs id (count id-prefix))
+    id))
+
 (defrecord Redis [^js/RedisClient client database id-prefix n-pending]
   storage/CacheStorage
 
   (clean-tag [this tag]
-    (swap! n-pending inc)
-    (let [callback (fn [ids]
-                     (delete-tag-and-ids client tag ids)
-                     (swap! n-pending dec))]
-      (tag->ids client tag callback)))
+    (swap! n-pending + 2)
+    (set-members client (str prefix-tag-id tag)
+                 (fn [ids]
+                   (delete-tag-and-ids client tag ids)
+                   (swap! n-pending dec)))
+    (set-members client (str symfony-prefix-tag-id tag)
+                 (fn [ids]
+                   (symfony-delete-tag-and-ids client id-prefix tag ids)
+                   (swap! n-pending dec))))
 
   (clean-id [this id]
-    (delete-cache-ids client [id]))
+    (delete-cache-ids client [id])
+    (symfony-delete-cache-ids client id-prefix [(strip-id-prefix id-prefix id)]))
 
   (clean-all [this]
     (log/debug "Flushing redis db" database)
