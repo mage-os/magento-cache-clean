@@ -51,12 +51,15 @@
       password (assoc :auth_pass password)
       database (assoc :db database))))
 
-(defn- set-members [^js/RedisClient client key callback]
+(defn- set-members
+  "Call callback with the members of the set at key.
+  The callback is always called, with nil if the lookup fails,
+  so callers can rely on it to track pending tasks."
+  [^js/RedisClient client key callback]
   (.smembers client key
              (fn [err ids]
-               (if err
-                 (log/error err)
-                 (callback (js->clj ids))))))
+               (when err (log/error err))
+               (callback (when-not err (js->clj ids))))))
 
 (defn- prefix-keys [ids]
   (doall (map #(str prefix-key %) ids)))
@@ -97,19 +100,26 @@
     (subs id (count id-prefix))
     id))
 
+(defn- pending-task
+  "Callback for set-members that passes the ids to delete-fn, unless the
+  lookup failed. The pending task is always marked as done, also when
+  delete-fn throws, otherwise close would wait forever."
+  [n-pending delete-fn]
+  (fn [ids]
+    (try
+      (when ids (delete-fn ids))
+      (catch :default e (log/error e))
+      (finally (swap! n-pending dec)))))
+
 (defrecord Redis [^js/RedisClient client database id-prefix n-pending]
   storage/CacheStorage
 
   (clean-tag [this tag]
     (swap! n-pending + 2)
     (set-members client (str prefix-tag-id tag)
-                 (fn [ids]
-                   (delete-tag-and-ids client tag ids)
-                   (swap! n-pending dec)))
+                 (pending-task n-pending #(delete-tag-and-ids client tag %)))
     (set-members client (str symfony-prefix-tag-id tag)
-                 (fn [ids]
-                   (symfony-delete-tag-and-ids client id-prefix tag ids)
-                   (swap! n-pending dec))))
+                 (pending-task n-pending #(symfony-delete-tag-and-ids client id-prefix tag %))))
 
   (clean-id [this id]
     (delete-cache-ids client [id])

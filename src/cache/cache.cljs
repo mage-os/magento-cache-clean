@@ -50,7 +50,8 @@
     (case backend
       ("Cm_Cache_Backend_Redis"
         "\\Magento\\Framework\\Cache\\Backend\\Redis"
-        "Magento\\Framework\\Cache\\Backend\\Redis")
+        "Magento\\Framework\\Cache\\Backend\\Redis"
+        "redis")
       (redis/create config)
 
       ("\\Magento\\Framework\\Cache\\Backend\\RemoteSynchronizedCache"
