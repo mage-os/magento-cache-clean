@@ -46,9 +46,11 @@ debug-build: image
 test: image
 	$(DOCKER_RUN) sh -c 'clojure -M:test -m figwheel.main -O simple -bo test && node target/test.js'
 
-# Runs bin/cache-clean.js against a Redis container, see test/integration/run.sh
+# Runs bin/cache-clean.js against a Redis container, and checks that the
+# watcher notices repeated saves of a file. See the scripts in test/integration
 integration-test: image
 	IMAGE=$(IMAGE) test/integration/run.sh
+	IMAGE=$(IMAGE) test/integration/watcher.sh
 
 install-dev-dir:
 	rsync -a ./ $(HOME)/.composer/vendor/mage-os/magento-cache-clean/
