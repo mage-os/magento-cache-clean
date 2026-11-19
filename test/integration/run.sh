@@ -67,7 +67,8 @@ expect() {
     fi
 }
 
-docker network create "$NAME" > /dev/null
+# Internal network, the containers only need to reach each other
+docker network create --internal "$NAME" > /dev/null
 docker run --detach --name "$NAME" --network "$NAME" --network-alias redis "$REDIS_IMAGE" > /dev/null
 
 for _ in $(seq 1 50); do

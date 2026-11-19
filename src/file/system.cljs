@@ -1,5 +1,6 @@
 (ns file.system
-  (:refer-clojure :exclude [exists?]))
+  (:refer-clojure :exclude [exists?])
+  (:require [clojure.string :as string]))
 
 (defonce fs (js/require "fs"))
 (defonce path (js/require "path"))
@@ -9,6 +10,9 @@
 
 (defn win? []
   (= "win32" (.-platform process)))
+
+(defn mac? []
+  (= "darwin" (.-platform process)))
 
 (defn- trailing-slash [s]
   (if (= "/" (subs s (- (count s) 1))) s (str s "/")))
@@ -132,13 +136,35 @@
            (swap! watches assoc dir-or-file watch)
            watch))))))
 
-(defn watch-recursive
-  "Watch dir including all subdirectories.
-  Node.js supports recursive watching on all platforms since version 20."
-  [dir callback]
+(defn- recursive-watch-supported?
+  "Node.js also supports the recursive option of fs.watch on Linux since
+  version 20, but there it watches the inode of each file. When a file is
+  replaced instead of written in place, as most editors and git do, only the
+  first change is reported. It also needs an inotify watch for every file.
+  So on Linux each directory is watched individually instead.
+  See test/integration/watcher.sh"
+  []
+  (or (mac?) (win?)))
+
+(defn- watch-recursive-manually [dir callback]
+  (let [wrapped-callback (fn [file]
+                           ;; filter out git dir for inotify on Linux.
+                           ;; See https://github.com/mage2tv/magento-cache-clean/issues/29
+                           (when (and (not (string/includes? file "/.git/"))
+                                      (dir? file)
+                                      (not (contains? @watches file)))
+                             (watch-recursive-manually file callback))
+                           (callback file))
+        watches (doall (map #(watch % wrapped-callback) (dir-tree dir)))]
+    ;; return composite facade to fs.FSWatcher providing a close method
+    #js {:close #(run! (fn [watch] (.close watch)) watches)}))
+
+(defn watch-recursive [dir callback]
   (if-not (dir? dir)
     (watch dir callback)
-    (watch dir #js {:recursive true} callback)))
+    (if (recursive-watch-supported?)
+      (watch dir #js {:recursive true} callback)
+      (watch-recursive-manually dir callback))))
 
 (defn stop-watching [dir]
   (try

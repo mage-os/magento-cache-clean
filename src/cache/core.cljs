@@ -22,9 +22,7 @@
                 :patch 2}]
      (nth (node-version) (parts part)))))
 
-(defn node-version-compatible?
-  "Node.js 20 is the first version with recursive fs.watch on Linux."
-  [major-version]
+(defn node-version-compatible? [major-version]
   (< 19 major-version))
 
 (defn check-node-compatibility! []
