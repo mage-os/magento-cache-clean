@@ -100,7 +100,7 @@ Use the `--keep-generated` switch if you want files in `generated/code` to remai
 
 ### Prerequisites:
 
-* `node.js` (built on 18, but should work with older 10.x versions, too).
+* `node.js` 20 or newer.
 * It's a good idea to turn on all Magento caches `bin/magento cache:enable` to get the full benefit.
 
 

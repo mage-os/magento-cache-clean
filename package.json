@@ -1,6 +1,8 @@
 {
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "@cljs-oss/module-deps": "^1.1.1",
-    "redis": "^2.8.0"
+    "redis": "2.8.0"
   }
 }

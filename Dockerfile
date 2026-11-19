@@ -9,7 +9,7 @@ FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc
 
 FROM clojure:temurin-17-tools-deps-bookworm-slim@sha256:eb6e60ce666da4f2efac1b45d133649f721a529cabd8b34e95cdcd15b48d716a
 
-# Node.js is only used by the ClojureScript compiler to index node_modules.
+# Node.js is used by the ClojureScript compiler to index node_modules, and to run the tests.
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 
 # The builds run as the host user, who has no home directory in the container.

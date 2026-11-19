@@ -22,12 +22,14 @@
                 :patch 2}]
      (nth (node-version) (parts part)))))
 
-(defn node-version-compatible? [major-version]
-  (< 7 major-version))
+(defn node-version-compatible?
+  "Node.js 20 is the first version with recursive fs.watch on Linux."
+  [major-version]
+  (< 19 major-version))
 
 (defn check-node-compatibility! []
   (when-not (node-version-compatible? (node-version :major))
-    (throw (ex-info (str "Node version " (node-version-str) " incompatible - please use node 8 or newer")
+    (throw (ex-info (str "Node version " (node-version-str) " incompatible - please use node 20 or newer")
                     {:node-version (node-version)}))))
 
 (defn- exit-with-code [code]
