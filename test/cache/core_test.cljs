@@ -25,6 +25,11 @@
   (testing "explicit verbosity wins over switches"
     (is (= "5" (core/find-log-level ["-s" "--verbosity" "5"])))))
 
+(deftest get-file-list-test
+  (is (= "files.txt" (core/get-file-list ["--file-list" "files.txt"])))
+  (is (= "files.txt" (core/get-file-list ["-v" "-f" "files.txt"])))
+  (is (nil? (core/get-file-list ["config"]))))
+
 (deftest remove-switches-and-args-with-vals-test
   (is (= ["config" "layout"]
          (core/remove-switches-and-args-with-vals

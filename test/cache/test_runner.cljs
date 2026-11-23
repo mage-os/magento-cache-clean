@@ -2,9 +2,11 @@
   (:require [cljs.test :as test :refer-macros [run-tests]]
             [cache.core-test]
             [cache.cache-test]
+            [cache.config.php-test]
             [cache.storage.redis-test]
             [cache.storage.varnish-test]
             [cache.storage.file-test]
+            [file.system-test]
             [magento.app-test]
             [magento.generated-code-test]
             [magento.service-contract-test]
@@ -18,9 +20,11 @@
 (defn -main [& _]
   (run-tests 'cache.core-test
              'cache.cache-test
+             'cache.config.php-test
              'cache.storage.redis-test
              'cache.storage.varnish-test
              'cache.storage.file-test
+             'file.system-test
              'magento.app-test
              'magento.generated-code-test
              'magento.service-contract-test
