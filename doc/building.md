@@ -36,3 +36,4 @@ $ make integration-test
 
 `make integration-test` runs the compiled `bin/cache-clean.js` against a Redis container and checks that the expected keys of both the legacy and the Symfony key layout are removed.
 The keys are seeded by `test/integration/run.sh`, they are not written by a real Magento instance.
+It also starts the watcher in a Linux container and checks that repeated saves of a file are noticed, for the different ways editors and git replace files.
