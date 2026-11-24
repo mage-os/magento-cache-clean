@@ -1,5 +1,6 @@
 (ns cache.core
   (:require [cache.cache :as cache]
+            [cache.storage :as storage]
             [magento.app :as mage]
             [file.system :as fs]
             [log.log :as log]
@@ -91,8 +92,8 @@ Clean the given cache types. If none are given, clean all cache types.
 
 --directory|-d <dir>    Magento base directory
 --watch|-w              Watch for file changes
---file-list <file>      Clean caches based on list of files in specified file
---keep-generated        Skip cleaning the generated/ directory
+--file-list|-f <file>   Clean caches based on list of files in specified file
+--keep-generated|-k     Skip cleaning the generated/ directory
 --no-flood-guard|-n     Disable the 5s debounce per cache type
 --verbose|-v            Display more information
 --debug|-vv             Display too much information
@@ -124,7 +125,7 @@ Clean the given cache types. If none are given, clean all cache types.
      "--keep-generated" "-k"} arg))
 
 (defn get-file-list [args]
-  (find-arg ["--file-list"] args))
+  (find-arg ["--file-list" "-f"] args))
 
 (defn has-file-list? [args]
   (get-file-list args))
@@ -182,6 +183,8 @@ Clean the given cache types. If none are given, clean all cache types.
   (log/always :without-time "Release" version
               " \033[48;2;255;215;0m\033[38;2;0;87;183m\033[1m #StandWith\033[48;2;0;87;183m\033[38;2;255;215;0mUkraine \033[0m "
               #_"\033[40m \033[97m#BlackLivesMatter ✊🏾 \033[0m")
+  ;; process.exit is not called, so pending work can finish
+  (reset! storage/on-failure #(aset js/process "exitCode" 1))
   (try
     (check-node-compatibility!)
     (cond

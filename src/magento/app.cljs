@@ -98,7 +98,7 @@
 
 (defn file-cache-backend? [config]
   (or (not (:backend config))
-      (= :backend "Cm_Cache_Backend_File")))
+      (= "Cm_Cache_Backend_File" (:backend config))))
 
 (defn file-potentially-containing-fpc-dir-bug
   "Reference https://github.com/magento/magento2/pull/22228"

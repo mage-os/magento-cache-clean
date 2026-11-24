@@ -1,5 +1,6 @@
 (ns cache.storage.redis-test
   (:require [cljs.test :refer-macros [deftest is are testing]]
+            [cache.storage :as storage]
             [cache.storage.redis :as redis]
             [log.log :as log]))
 
@@ -24,9 +25,21 @@
     (is (= {:path "/var/run/redis.sock"} (server-options {:server "unix:///var/run/redis.sock" :port "6380"})))))
 
 (deftest connect-options-test
-  (is (= {:db 0} (connect-options {:server "localhost"})))
-  (is (= {:host "redis.local" :db 2} (connect-options {:server "redis.local" :database 2})))
-  (is (= {:db 0 :auth_pass "secret"} (connect-options {:server "localhost" :password "secret"}))))
+  (is (= {} (connect-options {:server "localhost"})))
+  (is (= {:auth_pass "secret"} (connect-options {:server "localhost" :password "secret"})))
+  (testing "the database is selected with a separate command"
+    (is (= {:host "redis.local"} (connect-options {:server "redis.local" :database 2})))))
+
+(deftest when-selected-test
+  (let [redis {:selected (atom {:done? false :waiting []})}
+        calls (atom [])]
+    (#'redis/when-selected redis #(swap! calls conj 1))
+    (#'redis/when-selected redis #(swap! calls conj 2))
+    (is (= [] @calls) "commands wait until the database is selected")
+    (#'redis/release! (:selected redis))
+    (is (= [1 2] @calls) "waiting commands are sent in order")
+    (#'redis/when-selected redis #(swap! calls conj 3))
+    (is (= [1 2 3] @calls) "later commands are sent right away")))
 
 (deftest prefix-keys-test
   (is (= ["zc:k:t_A" "zc:k:t_B"] (#'redis/prefix-keys ["t_A" "t_B"])))
@@ -69,3 +82,50 @@
           (is (= 1 @n-pending))))
       (finally
         (log/set-verbosity! verbosity)))))
+
+(defn- redis-error [code message]
+  (let [err (js/Error. message)]
+    (set! (.-code err) code)
+    err))
+
+(deftest command-error-test
+  (let [verbosity @log/verbosity
+        on-failure @storage/on-failure
+        failures (atom 0)]
+    (log/set-verbosity! -1)
+    (reset! storage/on-failure #(swap! failures inc))
+    (try
+      (testing "a closed connection is a failure that is reported once"
+        (let [failed (atom false)]
+          (#'redis/command-error failed (redis-error "NR_CLOSED" "Stream connection ended and command aborted."))
+          (#'redis/command-error failed (redis-error "NR_CLOSED" "Stream connection ended and command aborted."))
+          (is (true? @failed))
+          (is (= 1 @failures))))
+      (reset! failures 0)
+      (testing "a command rejected by redis is a failure that is reported once"
+        (let [failed (atom false)]
+          (#'redis/command-error failed (redis-error "READONLY" "READONLY You can't write against a read only replica."))
+          (#'redis/command-error failed (redis-error "READONLY" "READONLY You can't write against a read only replica."))
+          (is (true? @failed))
+          (is (= 1 @failures))))
+      (reset! failures 0)
+      (testing "the retry strategy reports the failure and gives up"
+        (let [failed (atom false)
+              result ((#'redis/give-up-connecting failed) #js {:error (js/Error. "connect ECONNREFUSED")})]
+          (is (instance? js/Error result))
+          (is (true? @failed))
+          (is (= 1 @failures))))
+      (testing "the retry strategy also gives up if the connection was closed without an error"
+        (let [result ((#'redis/give-up-connecting (atom false)) #js {:error nil})]
+          (is (= "Redis connection closed" (.-message result)))))
+      (finally
+        (reset! storage/on-failure on-failure)
+        (log/set-verbosity! verbosity)))))
+
+(deftest command-callback-test
+  (let [redis {:n-pending (atom 0) :failed (atom false)}
+        callback (#'redis/command-callback redis)]
+    (is (= 1 @(:n-pending redis)) "the command is pending until the callback is called")
+    (callback nil "OK")
+    (is (= 0 @(:n-pending redis)))
+    (is (false? @(:failed redis)))))
