@@ -1,0 +1,4 @@
+# Not needed in Composer installs
+/.github export-ignore
+/test export-ignore
+/test.cljs.edn export-ignore

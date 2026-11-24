@@ -136,7 +136,14 @@
            (swap! watches assoc dir-or-file watch)
            watch))))))
 
-(defn- recursive-watch-supported? []
+(defn- recursive-watch-supported?
+  "Node.js also supports the recursive option of fs.watch on Linux since
+  version 20, but there it watches the inode of each file. When a file is
+  replaced instead of written in place, as most editors and git do, only the
+  first change is reported. It also needs an inotify watch for every file.
+  So on Linux each directory is watched individually instead.
+  See test/integration/watcher.sh"
+  []
   (or (mac?) (win?)))
 
 (defn- watch-recursive-manually [dir callback]

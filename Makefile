@@ -1,6 +1,10 @@
 # The builds run in a Docker container, so neither Clojure nor Node.js need to
 # be installed on the host. The container has no network access, and can only
-# write to the bin, export and target directories.
+# write to the bin and export directories.
+#
+# The compiler cache in target/ lives on a tmpfs, so every build starts clean.
+# A build that reuses the cache of a previous one produces different output,
+# and CI checks that the committed files match a clean build.
 
 IMAGE := magento-cache-clean-build
 
@@ -13,17 +17,18 @@ DOCKER_RUN := docker run --rm \
 	--volume "$(CURDIR)":/app:ro \
 	--volume "$(CURDIR)/bin":/app/bin \
 	--volume "$(CURDIR)/export":/app/export \
-	--volume "$(CURDIR)/target":/app/target \
+	--tmpfs /app/target:mode=1777 \
 	$(IMAGE)
 
 FIGWHEEL := $(DOCKER_RUN) clojure -M -m figwheel.main
 
-.PHONY: all image build lib debug-build install-dev-dir install-debug repl
+.PHONY: all image build lib debug-build test integration-test install-dev-dir install-debug repl
 
 all: build lib
 
 image:
 	docker build --tag $(IMAGE) .
+	@# Mount point for the tmpfs, the directory itself stays empty
 	mkdir -p target
 
 build: image
@@ -36,6 +41,16 @@ lib: image
 debug-build: image
 	$(FIGWHEEL) -O simple -bo build
 	chmod +x bin/cache-clean.js
+
+# Unit tests, compiled and run with Node.js in the build container.
+test: image
+	$(DOCKER_RUN) sh -c 'clojure -M:test -m figwheel.main -O simple -bo test && node target/test.js'
+
+# Runs bin/cache-clean.js against a Redis container, and checks that the
+# watcher notices repeated saves of a file. See the scripts in test/integration
+integration-test: image
+	IMAGE=$(IMAGE) test/integration/run.sh
+	IMAGE=$(IMAGE) test/integration/watcher.sh
 
 install-dev-dir:
 	rsync -a ./ $(HOME)/.composer/vendor/mage-os/magento-cache-clean/
