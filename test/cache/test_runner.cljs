@@ -4,6 +4,7 @@
             [cache.cache-test]
             [cache.config.php-test]
             [cache.storage.redis-test]
+            [cache.storage.remote-synchronized-test]
             [cache.storage.varnish-test]
             [cache.storage.file-test]
             [file.system-test]
@@ -22,6 +23,7 @@
              'cache.cache-test
              'cache.config.php-test
              'cache.storage.redis-test
+             'cache.storage.remote-synchronized-test
              'cache.storage.varnish-test
              'cache.storage.file-test
              'file.system-test

@@ -1,0 +1,26 @@
+{
+    "app": {
+        "cache_types": {"config": 1, "full_page": 1},
+        "cache": {
+            "frontend": {
+                "default": {
+                    "id_prefix": "t_",
+                    "backend": "\\Magento\\Framework\\Cache\\Backend\\RemoteSynchronizedCache",
+                    "backend_options": {
+                        "remote_backend": "Magento\\Framework\\Cache\\Backend\\Redis",
+                        "remote_backend_options": {"server": "redis", "port": 6379, "database": 0},
+                        "local_backend": "Cm_Cache_Backend_File",
+                        "local_backend_options": {"cache_dir": "/tmp/cache-clean-test-local-cache/"}
+                    }
+                },
+                "page_cache": {
+                    "id_prefix": "t_",
+                    "backend": "redis",
+                    "backend_options": {"server": "redis", "port": 6379, "database": 1}
+                }
+            }
+        }
+    },
+    "modules": [],
+    "themes": []
+}
