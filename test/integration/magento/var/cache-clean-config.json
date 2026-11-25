@@ -1,0 +1,21 @@
+{
+    "app": {
+        "cache_types": {"config": 1, "full_page": 1},
+        "cache": {
+            "frontend": {
+                "default": {
+                    "id_prefix": "t_",
+                    "backend": "redis",
+                    "backend_options": {"server": "redis", "port": 6379, "database": 0}
+                },
+                "page_cache": {
+                    "id_prefix": "t_",
+                    "backend": "redis",
+                    "backend_options": {"server": "redis", "port": 6379, "database": 1}
+                }
+            }
+        }
+    },
+    "modules": [],
+    "themes": []
+}

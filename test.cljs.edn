@@ -1,0 +1,4 @@
+{:main cache.test-runner
+ :target :nodejs
+ :install-deps false
+ :output-to "target/test.js"}

@@ -1,0 +1,35 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Verify build and run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: make all
+
+      # The compiled files are committed, because Composer installs them as is.
+      # A clean build is deterministic, so any difference means the committed
+      # files were not built from the committed source.
+      - name: Check the committed build matches the source
+        run: git diff --exit-code -- bin export
+
+      - name: Unit tests
+        run: make test
+
+      - name: Integration tests
+        run: make integration-test

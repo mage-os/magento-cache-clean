@@ -2,5 +2,5 @@
  :target :nodejs
  :infer-externs true
  :npm-deps {:redis "2.8.0"}
- :install-deps true
+ :install-deps false
  :output-to "bin/cache-clean.js"}

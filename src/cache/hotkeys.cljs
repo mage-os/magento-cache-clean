@@ -39,7 +39,7 @@
 (defn- check-abort [key]
   (when (= key ctr-c)
     (log/notice :without-time "Bye!")
-    (.exit process)))
+    (.exit process 0)))
 
 (defn- process-key [base-dir key]
   (log/debug "Key pressed:" key)
@@ -57,7 +57,11 @@
 (defn- process-keys [base-dir key-chan]
   (go-loop []
     (let [key (<! key-chan)]
-      (process-key base-dir key)
+      ;; an error while handling one key must not disable the hotkeys
+      (try
+        (process-key base-dir key)
+        (catch :default e
+          (log/error "Error processing key" key "-" (or (.-message e) (str e)))))
       (recur))))
 
 (defn- init-hotkeys [base-dir ^js/net.Socket stdin]

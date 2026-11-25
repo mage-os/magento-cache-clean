@@ -254,11 +254,19 @@
     (swap! changed-file-queue disj file)
     file))
 
+(defn- process-file
+  "An error while processing one file must not stop the watcher."
+  [file]
+  (try
+    (file-changed file)
+    (catch :default e
+      (log/error "Error processing" file "-" (or (.-message e) (str e))))))
+
 (defn- start-file-processing []
   (go (while true
         (do
           (when-let [file (shift-file!)]
-            (file-changed file))
+            (process-file file))
           (<! (timeout 5)))))) ;; allow keyboard events to be processed
 
 (defn module-controllers [module-dir]

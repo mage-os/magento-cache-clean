@@ -1,6 +1,7 @@
 (ns file.system
   (:refer-clojure :exclude [exists?])
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [log.log :as log]))
 
 (defonce fs (js/require "fs"))
 (defonce path (js/require "path"))
@@ -120,7 +121,16 @@
 (defn watched? [dir-or-file]
   (get @watches (realpath dir-or-file)))
 
+(declare stop-watching)
+
+(defn- error-message [e]
+  (or (.-message e) (str e)))
+
 (defn watch
+  "Watch dir-or-file and call callback with the path of each changed file.
+  Errors thrown by the callback and errors of the watch itself are logged.
+  Node.js would end the process otherwise, since both happen outside of any
+  call stack that could catch them."
   ([dir-or-file callback] (watch dir-or-file #js {} callback))
   ([dir-or-file options callback]
    (let [dir-or-file (realpath dir-or-file)]
@@ -131,12 +141,26 @@
                                       (dirname dir-or-file)))
              callback-wrapper (fn [event-type filename]
                                 (when filename
-                                  (callback (str prefix filename))))]
-         (let [watch (.watch fs dir-or-file options callback-wrapper)]
+                                  (let [file (str prefix filename)]
+                                    (try
+                                      (callback file)
+                                      (catch :default e
+                                        (log/error "Error handling change of" file "-" (error-message e)))))))]
+         (let [^js/fs.FSWatcher watch (.watch fs dir-or-file options callback-wrapper)]
+           (.on watch "error" (fn [e]
+                                (log/notice "Stopped watching" dir-or-file "-" (error-message e))
+                                (stop-watching dir-or-file)))
            (swap! watches assoc dir-or-file watch)
            watch))))))
 
-(defn- recursive-watch-supported? []
+(defn- recursive-watch-supported?
+  "Node.js also supports the recursive option of fs.watch on Linux since
+  version 20, but there it watches the inode of each file. When a file is
+  replaced instead of written in place, as most editors and git do, only the
+  first change is reported. It also needs an inotify watch for every file.
+  So on Linux each directory is watched individually instead.
+  See test/integration/watcher.sh"
+  []
   (or (mac?) (win?)))
 
 (defn- watch-recursive-manually [dir callback]
@@ -146,7 +170,10 @@
                            (when (and (not (string/includes? file "/.git/"))
                                       (dir? file)
                                       (not (contains? @watches file)))
-                             (watch-recursive-manually file callback))
+                             (try
+                               (watch-recursive-manually file callback)
+                               (catch :default e
+                                 (log/error "Unable to watch" file "-" (error-message e)))))
                            (callback file))
         watches (doall (map #(watch % wrapped-callback) (dir-tree dir)))]
     ;; return composite facade to fs.FSWatcher providing a close method
