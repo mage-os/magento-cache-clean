@@ -107,6 +107,32 @@ expect "legacy id removed"                0 -n 0 EXISTS zc:k:t_CRONTAB_CONFIG_CA
 expect "symfony id removed"               0 -n 0 EXISTS t_:CRONTAB_CONFIG_CACHE
 expect "other ids kept"                   4 -n 0 EXISTS zc:k:t_KEEP t_:KEEP zc:k:t_A t_:B
 
+# The default cache as on Adobe Commerce Cloud: a remote redis backend with a
+# local file backend. Magento stores a version hash for each id in redis.
+seed_version_hashes() {
+    redis -n 0 MSET zc:k:t_A:hash 1 zc:k:t_KEEP:hash 1 zc:k:t_CRONTAB_CONFIG_CACHE:hash 1 > /dev/null
+    redis -n 0 SADD zc:ids t_A:hash t_KEEP:hash t_CRONTAB_CONFIG_CACHE:hash > /dev/null
+    redis -n 0 SADD zc:ti:t_CONFIG t_A:hash > /dev/null
+}
+
+echo "RemoteSynchronizedCache, clean cache type: config"
+seed
+seed_version_hashes
+MAGENTO=test/integration/magento-remote-synchronized cache_clean config
+expect "tagged id and version hash removed" 0 -n 0 EXISTS zc:k:t_A zc:k:t_A:hash
+expect "tag index removed"                0 -n 0 EXISTS zc:ti:t_CONFIG
+expect "untagged ids kept"                4 -n 0 EXISTS zc:k:t_KEEP zc:k:t_KEEP:hash zc:k:t_CRONTAB_CONFIG_CACHE zc:k:t_CRONTAB_CONFIG_CACHE:hash
+expect "full page cache kept"             1 -n 1 EXISTS fpc
+
+echo "RemoteSynchronizedCache, clean cache id from file list: crontab.xml"
+seed
+seed_version_hashes
+MAGENTO=test/integration/magento-remote-synchronized cache_clean --file-list test/integration/file-list.txt
+expect "id and version hash removed"      0 -n 0 EXISTS zc:k:t_CRONTAB_CONFIG_CACHE zc:k:t_CRONTAB_CONFIG_CACHE:hash
+expect "id removed from id set"           0 -n 0 SISMEMBER zc:ids t_CRONTAB_CONFIG_CACHE
+expect "version hash removed from id set" 0 -n 0 SISMEMBER zc:ids t_CRONTAB_CONFIG_CACHE:hash
+expect "other ids kept"                   4 -n 0 EXISTS zc:k:t_KEEP zc:k:t_KEEP:hash zc:k:t_A zc:k:t_A:hash
+
 echo "Clean cache type: full_page"
 seed
 cache_clean full_page
